@@ -1,0 +1,268 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', 'Inter', sans-serif;
+    background-color: #f5f6fa;
+    color: #333333;
+}
+
+/* Zaglavlje - Sticky */
+.header {
+    position: sticky;
+    top: 0;
+    background-color: white;
+    padding: 16px 24px;
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    z-index: 100;
+    gap: 20px;
+}
+
+/* Lijevi dio zaglavlja */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-self: start;
+}
+
+.back-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    color: #333333;
+}
+
+.back-button:hover {
+    color: #5B3FFF;
+}
+
+.project-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333333;
+}
+
+/* Središnji dio zaglavlja */
+.header-center {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.format-button {
+    padding: 10px 20px;
+    background-color: #e5e7eb;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    transition: background-color 0.2s;
+}
+
+.format-button:hover {
+    background-color: #f0f0f0;
+}
+
+/* Desni dio zaglavlja */
+.header-right {
+    justify-self: end;
+}
+
+.save-button {
+    padding: 10px 24px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.save-button:hover {
+    background-color: #218838;
+}
+
+/* Content wrapper */
+.content-wrapper {
+    display: flex;
+    min-height: calc(100vh - 70px);
+}
+
+/* Sidebar sa scenama */
+.scenes-sidebar {
+    width: 250px;
+    background-color: white;
+    padding: 24px 16px;
+    overflow-y: auto;
+    border-right: 1px solid #e5e7eb;
+}
+
+.scenes-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333333;
+    margin-bottom: 20px;
+}
+
+.scene-count {
+    color: #999999;
+    font-weight: 400;
+}
+
+.scenes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.scene-item {
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.scene-item:hover {
+    background-color: #f5f6fa;
+}
+
+.scene-item.active {
+    background-color: #E9EEFF;
+    border-left-color: #5B3FFF;
+}
+
+.scene-header {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333333;
+    margin-bottom: 8px;
+}
+
+.scene-pages {
+    font-size: 12px;
+    color: #999999;
+}
+
+/* Glavni prostor za pisanje (Editor) */
+.editor {
+    flex: 1;
+    padding: 40px;
+    display: flex;
+    justify-content: center;
+}
+
+.script-content {
+    background-color: #fff;
+    max-width: 800px;
+    width: 100%;
+    padding: 60px 80px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 12pt;
+    line-height: 1.6;
+}
+
+.script-content p {
+    margin-bottom: 1.5em;
+}
+
+/* Naslov scene */
+.scene-heading {
+    color: #D68A00;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 1.5em;
+}
+
+/* Akcija */
+.action {
+    color: #333333;
+    text-align: left;
+}
+
+/* Lik */
+.character {
+    color: #333333;
+    text-align: center;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 0.5em;
+    margin-top: 1em;
+}
+
+/* Dijalog */
+.dialogue {
+    color: #333333;
+    text-align: left;
+    margin-left: 100px;
+    margin-right: 100px;
+    margin-bottom: 1em;
+}
+
+/* Responzivnost */
+@media (max-width: 750px) {
+    .header {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .header-left {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .header-center {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .header-right {
+        width: 100%;
+    }
+
+    .save-button {
+        width: 100%;
+    }
+
+    .content-wrapper {
+        flex-direction: column;
+    }
+
+    .scenes-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .editor {
+        padding: 20px;
+    }
+
+    .script-content {
+        padding: 40px 20px;
+    }
+
+    .dialogue {
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+}

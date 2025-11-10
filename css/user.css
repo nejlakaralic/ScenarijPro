@@ -1,0 +1,324 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', 'Inter', sans-serif;
+    background-color: #f5f6fa;
+    color: #333333;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container {
+    width: 100%;
+    padding: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* forma */
+.user-form {
+    background-color: white;
+    max-width: 840px;
+    width: 100%;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* zaglavlje forme */
+.form-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #333333;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.title-divider {
+    border: none;
+    border-top: 2px solid #5B3FFF;
+    margin-bottom: 16px;
+}
+
+.form-subtitle {
+    font-style: italic;
+    text-align: center;
+    color: #666666;
+    font-size: 14px;
+    margin-bottom: 32px;
+}
+
+/* sekcije */
+.form-section {
+    margin-bottom: 24px;
+    padding: 24px;
+    border-radius: 8px;
+}
+
+/* prva sekcija */
+.form-section:nth-of-type(1) {
+    background-color: #F3F0FF;
+}
+
+.form-section:nth-of-type(1) .section-title {
+    color: #6B21A8;
+}
+
+.form-section:nth-of-type(1) .form-input {
+    border-color: #1e40af;
+}
+
+.form-section:nth-of-type(1) .form-input:focus {
+    border-color: #1e3a8a;
+}
+
+/* druga sekcija */
+.form-section:nth-of-type(2) {
+    background-color: #FFF7ED;
+}
+
+.form-section:nth-of-type(2) .section-title {
+    color: #C2410C;
+}
+
+.form-section:nth-of-type(2) .form-input {
+    border-color: #f97316;
+}
+
+.form-section:nth-of-type(2) .form-input:focus {
+    border-color: #ea580c;
+}
+
+.form-section:nth-of-type(2) .form-checkbox {
+    accent-color: #f97316;
+}
+
+/* treca sekcija */
+.form-section:nth-of-type(3) {
+    background-color: #F0FDF4;
+}
+
+.form-section:nth-of-type(3) .section-title {
+    color: #15803D;
+}
+
+.form-section:nth-of-type(3) .form-input,
+.form-section:nth-of-type(3) .form-select {
+    border-color: #16a34a;
+}
+
+.form-section:nth-of-type(3) .form-input:focus,
+.form-section:nth-of-type(3) .form-select:focus {
+    border-color: #15803d;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+/* responzivni layout */
+.form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333333;
+}
+
+/* input polja */
+.form-input {
+    padding: 12px 16px;
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #5B3FFF;
+}
+
+.form-input::placeholder {
+    color: #999999;
+}
+
+/* prikaz zvjezdica */
+input[type="password"] {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+}
+
+/* select dropdown */
+.form-select {
+    padding: 12px 16px;
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background-color: white;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: #5B3FFF;
+}
+
+.form-podnaslov {
+    text-align: left;
+    color: #666666;
+    font-size: 12px;
+    margin-top: -12px;
+    margin-bottom: 20px;
+}
+
+/* checkbox */
+.checkbox-group {
+    flex-direction: row;
+    align-items: center;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333333;
+}
+
+.form-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #f97316;
+}
+
+/* radio buttons */
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333333;
+}
+
+.form-radio {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: rgb(224, 86, 23);
+}
+
+/* save */
+.form-actions {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: center;
+}
+
+.save-button {
+    width: 100%;
+    padding: 12px 32px;
+    background-color: #5B3FFF;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-align: center;
+}
+
+.save-button:hover {
+    background-color: #4a32cc;
+}
+
+/* responzivnost veci ekrani */
+@media (min-width: 750px) {
+    /* layout labela lijevo polje desno */
+    .form-group {
+        flex-direction: row;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .form-label {
+        min-width: 225px;
+        flex-shrink: 0;
+    }
+
+    .form-input,
+    .form-select {
+        flex: 1;
+    }
+
+    /* radio buttons u liniji */
+    .radio-group {
+        flex-direction: row;
+        gap: 24px;
+        flex: 1;
+    }
+
+    .form-podnaslov {
+        margin-left: 240px;
+    }
+}
+
+/* responzivnost manji ekrani */
+@media (max-width: 749px) {
+    .user-form {
+        padding: 24px;
+    }
+
+    .form-title {
+        font-size: 24px;
+    }
+
+    .section-title {
+        font-size: 16px;
+    }
+
+    .container {
+        padding: 20px;
+    }
+
+    /* labele iznad polja */
+    .form-group {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* radio buttons u liniji */
+    .radio-group {
+        flex-direction: row;
+        gap: 12px;
+    }
+}

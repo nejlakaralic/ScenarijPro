@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScenarijPro - Korisnički profil</title>
+    <link rel="stylesheet" href="/wt26p19318/css/user.css">
+</head>
+<body>
+    <div class="container">
+        <form class="user-form">
+            <!-- Zaglavlje forme -->
+            <h1 class="form-title">Postavke korisničkog računa</h1>
+            <hr class="title-divider">
+            <p class="form-subtitle">Upravljajte vašim korisničkim računom, sigurnosnim postavkama i notifikacijama</p>
+
+            <!-- Podaci o korisničkom računu -->
+            <section class="form-section">
+                <h2 class="section-title">Podaci o korisničkom računu</h2>
+                
+                <div class="form-group">
+                    <label for="fullname" class="form-label">Ime i prezime</label>
+                    <input 
+                        type="text" 
+                        id="fullname" 
+                        class="form-input" 
+                        placeholder="Unesite vaše ime i prezime"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="email" class="form-label">Email adresa</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        class="form-input" 
+                        placeholder="vas.email@primjer.com"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="items-per-page" class="form-label">Broj elemenata po stranici (1-100)</label>
+                    <input 
+                        type="number" 
+                        id="items-per-page" 
+                        class="form-input" 
+                        min="1" 
+                        max="100" 
+                        placeholder="10"
+                    >
+                </div>
+            </section>
+
+            <!-- Sigurnosne postavke -->
+            <section class="form-section">
+                <h2 class="section-title">Sigurnosne postavke</h2>
+                
+                <div class="form-group">
+                    <label for="password" class="form-label">Nova šifra</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="form-input" 
+                        placeholder="Unesite novu šifru"
+                    >
+                    
+                </div>
+                <p class="form-podnaslov">Ostavite prazno da zadržite trenutnu šifru.</p>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="2fa" class="form-checkbox">
+                        <span>Omogući Two-Factor Authentication (2FA)</span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Notifikacije -->
+            <section class="form-section">
+                <h2 class="section-title">Notifikacije</h2>
+                
+                <div class="form-group">
+                    <label class="form-label">Preferirani način komunikacije</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="communication" value="email" class="form-radio">
+                            <span>Email</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="communication" value="sms" class="form-radio">
+                            <span>SMS</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="communication" value="none" class="form-radio" checked>
+                            <span>None</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="frequency" class="form-label">Notification Frequency</label>
+                    <select id="frequency" class="form-select">
+                        <option value="daily" selected>Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="never">Never</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- Dugme za čuvanje -->
+            <div class="form-actions">
+                <button type="submit" class="save-button">Spasi promjene</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
