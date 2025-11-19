@@ -322,3 +322,22 @@ input[type="password"] {
         gap: 12px;
     }
 }
+
+/* responzivnost ispod 500px */
+@media (max-width: 499px) {
+    /* sakrivanje druge i trece sekcije */
+    .form-section:nth-of-type(2),
+    .form-section:nth-of-type(3) {
+        display: none;
+    }
+
+    /* sakrivanje labela */
+    .form-label {
+        display: none;
+    }
+
+    /* boja placeholdera */
+    .form-input::placeholder {
+        color: #a0a0a0;
+    }
+}
