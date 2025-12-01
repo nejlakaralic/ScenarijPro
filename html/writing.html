@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ScenarijPro - Pisanje</title>
-    <link rel="stylesheet" href="/wt26p19318/css/writing.css">
+    <link rel="stylesheet" href="/css/writing.css">
+
 </head>
 <body>
+
     <!-- Zaglavlje -->
     <header class="header">
         <div class="header-left">
@@ -29,6 +31,24 @@
             <button class="save-button">Spasi</button>
         </div>
     </header>
+
+    <!-- ===== Toolbar spirale 2 ===== -->
+    <div class="editor-toolbar">
+        <button class="toolbar-button" id="btnBold">Bold</button>
+        <button class="toolbar-button" id="btnItalic">Italic</button>
+        <button class="toolbar-button" id="btnUnderline">Underline</button>
+
+        <button class="toolbar-button" id="btnBrojRijeci">Broj riječi</button>
+        <button class="toolbar-button" id="btnUloge">Uloge</button>
+        <button class="toolbar-button" id="btnPogresneUloge">Pogrešne uloge</button>
+        <button class="toolbar-button" id="btnBrojLinijaTeksta">Broj linija teksta</button>
+        <button class="toolbar-button" id="btnGrupisi">Grupiši uloge</button>
+        <button class="toolbar-button" id="btnScenarij">Scenarij uloge</button>
+
+    </div>
+
+    <!-- Poruke spirale 2 -->
+    <div id="poruke"></div>
 
     <div class="content-wrapper">
         <!-- Sidebar sa scenama -->
@@ -55,75 +75,37 @@
 
         <!-- Glavni prostor za pisanje -->
         <main class="editor">
-            <div class="script-content">
+            <div id="divEditor" class="script-content" contenteditable="true">
                 <p class="scene-heading">EXT. THE GLADE – DAY</p>
                 
                 <p class="action">
-                    Sunlight streams through towering ivy-covered walls. The Glade 
-                    stretches out like a paradise prison - lush gardens, makeshift 
-                    shelters, and boys working the land. In the center, a crude 
-                    elevator shaft - THE BOX - sits ominously quiet.
+                    Sunlight streams through towering ivy-covered walls...
                 </p>
                 
                 <p class="action">
-                    THOMAS (16) wakes with a gasp. Confusion clouds his eyes. He 
-                    scrambles to his feet, spinning around, taking in the impossible 
-                    walls surrounding them.
+                    THOMAS (16) wakes with a gasp...
                 </p>
                 
                 <p class="character">THOMAS</p>
                 <p class="dialogue">
                     Where... where am I?
                 </p>
-                
+
                 <p class="action">
-                    ALBY (17), strong and weathered beyond his years, approaches 
-                    with cautious authority. Behind him, a crowd of GLADERS gather, 
-                    watching the newcomer with a mix of curiosity and wariness.
+                    ALBY (17), strong and weathered...
                 </p>
                 
                 <p class="character">ALBY</p>
                 <p class="dialogue">
                     Welcome to the Glade, Greenie.
                 </p>
-                
-                <p class="action">
-                    Thomas stumbles backward, eyes wild with panic.
-                </p>
-                
-                <p class="character">THOMAS</p>
-                <p class="dialogue">
-                    What is this place? How did I get here?
-                </p>
-                
-                <p class="character">ALBY</p>
-                <p class="dialogue">
-                    Same way we all did. The Box brought you. 
-                    That's all you need to know for now.
-                </p>
-                
-                <p class="action">
-                    In the distance, a GRINDING SOUND echoes. Thomas's head snaps 
-                    toward massive doors in the wall - THE MAZE ENTRANCE - slowly 
-                    opening, revealing darkness beyond.
-                </p>
-                
-                <p class="character">THOMAS</p>
-                <p class="dialogue">
-                    What's out there?
-                </p>
-                
-                <p class="action">
-                    Alby's expression darkens.
-                </p>
-                
-                <p class="character">ALBY</p>
-                <p class="dialogue">
-                    The Maze. And you don't want to go in there, 
-                    trust me.
-                </p>
             </div>
         </main>
     </div>
+
+    <!-- ===== Scriptovi spirale 2 ===== -->
+    <script src="/js/EditorTeksta.js"></script>
+    <script src="/js/editor.js"></script>
+
 </body>
 </html>
