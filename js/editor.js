@@ -2,6 +2,10 @@
 //      editor.js
 // =====================
 
+// ====== KONSTANTE ======
+const SCENARIO_ID = 1;
+const USER_ID = 1;
+
 // Uzmi editor div
 let div = document.getElementById("divEditor");
 let editor = EditorTeksta(div);
@@ -15,34 +19,80 @@ function ispisi(msg) {
 }
 
 // ============================
+//   UCITAVANJE SCENARIJA SA SERVERA
+// ============================
+
+PoziviAjax.getScenario(SCENARIO_ID, function (status, data) {
+
+    if (status !== 200) {
+        ispisi("Greška pri učitavanju scenarija.");
+        return;
+    }
+
+    div.innerHTML = "";
+
+    data.content.forEach(l => {
+        const span = document.createElement("span");
+        span.dataset.lineid = l.lineId;
+        span.innerText = l.text;
+        div.appendChild(span);
+        div.appendChild(document.createElement("br"));
+    });
+});
+
+// ============================
 //   FORMATIRANJE TEKSTA
 // ============================
 
-// Bold
 document.getElementById("btnBold").onclick = function () {
     let ok = editor.formatirajTekst("bold");
     if (!ok) ispisi("Nije odabran tekst za bold.");
 };
 
-// Italic
 document.getElementById("btnItalic").onclick = function () {
     let ok = editor.formatirajTekst("italic");
     if (!ok) ispisi("Nije odabran tekst za italic.");
 };
 
-// Underline
 document.getElementById("btnUnderline").onclick = function () {
     let ok = editor.formatirajTekst("underline");
     if (!ok) ispisi("Nije odabran tekst za underline.");
 };
 
 // ============================
-//   BROJ RIJECI
+//   BROJ RIJECI + SLANJE NA SERVER
 // ============================
 
 document.getElementById("btnBrojRijeci").onclick = function () {
+
+    // Lokalna funkcionalnost ostaje
     let rez = editor.dajBrojRijeci();
     ispisi(`Ukupno: ${rez.ukupno} | Boldiranih: ${rez.boldiranih} | Italic: ${rez.italic}`);
+
+    // ====== ZADATAK 2: AJAX UPDATE ======
+    const firstLine = div.querySelector("span");
+    if (!firstLine) return;
+
+    const lineId = firstLine.dataset.lineid;
+    const text = firstLine.innerText;
+
+    // 1) LOCK
+    PoziviAjax.lockLine(SCENARIO_ID, lineId, USER_ID, function (status) {
+
+        if (status !== 200) return;
+
+        // 2) UPDATE
+        PoziviAjax.updateLine(
+            SCENARIO_ID,
+            lineId,
+            USER_ID,
+            [text],
+            function () {
+                // samo dokaz da je poslano
+                console.log("Izmjena poslana na server.");
+            }
+        );
+    });
 };
 
 // ============================
@@ -83,25 +133,22 @@ document.getElementById("btnScenarij").onclick = function () {
         return;
     }
 
-    // Formatiran ispis
     let output = `Replike za ulogu ${uloga.toUpperCase()}:\n\n`;
 
-    rez.forEach((r, idx) => {
+    rez.forEach(r => {
 
         output += `Scene: ${r.scena}\n`;
         output += `Pozicija u sceni: ${r.pozicijaUTekstu}\n`;
 
-        if (r.prethodni)
-            output += `Prethodni → ${r.prethodni.uloga}: ${r.prethodni.linije.join(" ")}\n`;
-        else
-            output += `Prethodni → N/A\n`;
+        output += r.prethodni
+            ? `Prethodni → ${r.prethodni.uloga}: ${r.prethodni.linije.join(" ")}\n`
+            : `Prethodni → N/A\n`;
 
         output += `Trenutni → ${r.trenutni.uloga}: ${r.trenutni.linije.join(" ")}\n`;
 
-        if (r.sljedeci)
-            output += `Sljedeći → ${r.sljedeci.uloga}: ${r.sljedeci.linije.join(" ")}\n`;
-        else
-            output += `Sljedeći → N/A\n`;
+        output += r.sljedeci
+            ? `Sljedeći → ${r.sljedeci.uloga}: ${r.sljedeci.linije.join(" ")}\n`
+            : `Sljedeći → N/A\n`;
 
         output += `\n-----------------------------\n\n`;
     });
@@ -110,7 +157,7 @@ document.getElementById("btnScenarij").onclick = function () {
 };
 
 // ============================
-//   BROJ LINIJA TEKSTA (uloga)
+//   BROJ LINIJA TEKSTA
 // ============================
 
 document.getElementById("btnBrojLinijaTeksta").onclick = function () {
@@ -121,10 +168,8 @@ document.getElementById("btnBrojLinijaTeksta").onclick = function () {
     }
 
     let broj = editor.brojLinijaTeksta(uloga);
-
     ispisi(`Uloga "${uloga.toUpperCase()}" izgovara ukupno ${broj} linija teksta.`);
 };
-
 
 // ============================
 //   GRUPISANJE ULOGA
