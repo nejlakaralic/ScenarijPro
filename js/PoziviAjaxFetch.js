@@ -1,4 +1,4 @@
-const PoziviAjax = (function () {
+const PoziviAjaxFetch = (function () {
 
     function request(method, url, body, callback) {
         const options = {
