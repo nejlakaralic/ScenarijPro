@@ -22,7 +22,7 @@ function ispisi(msg) {
 //   UCITAVANJE SCENARIJA SA SERVERA
 // ============================
 
-PoziviAjax.getScenario(SCENARIO_ID, function (status, data) {
+PoziviAjaxFetch.getScenario(SCENARIO_ID, function (status, data) {
 
     if (status !== 200) {
         ispisi("Greška pri učitavanju scenarija.");

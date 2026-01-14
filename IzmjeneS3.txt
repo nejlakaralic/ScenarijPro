@@ -1,2 +1,3 @@
 Preimenovan je fajl PoziviAjax.js u PoziviAjaxFetch.js, te je promijenjen naziv globalnog objekta u 
 PoziviAjaxFetch radi usklađivanja sa Fetch API testovima. Logika aplikacije nije mijenjana.
+U editor.js i writing.html promijenjen naziv iz PoziviAjax u PoziviAjaxFetch.
