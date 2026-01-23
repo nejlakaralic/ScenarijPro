@@ -1,453 +1,438 @@
 const express = require("express");
-const fs = require("fs/promises");
 const path = require("path");
+const { Op } = require("sequelize");
+
+const { Scenario, Line, Delta, Checkpoint } = require("./models");
+const sequelize = require("./db");
 
 const app = express();
 app.use(express.json());
 
 // =====================
-//   SERVING FRONTEND (ZADATAK 2)
+// SERVE FRONTEND
 // =====================
 app.use(express.static(path.join(__dirname, "html")));
 app.use("/js", express.static(path.join(__dirname, "js")));
 app.use("/css", express.static(path.join(__dirname, "css")));
 
-
 // =====================
-//   PATHS / HELPERS
+// HELPERS
 // =====================
-const DATA_DIR = path.join(__dirname, "data");
-const SCENARIOS_DIR = path.join(DATA_DIR, "scenarios");
-const DELTAS_FILE = path.join(DATA_DIR, "deltas.json");
-
-async function ensureDataFolders() {
-  await fs.mkdir(SCENARIOS_DIR, { recursive: true });
-
-  try {
-    await fs.access(DELTAS_FILE);
-  } catch {
-    await fs.writeFile(DELTAS_FILE, "[]", "utf-8");
-  }
-
-  // ako je prazan fajl ili smeće, postavi []
-  try {
-    const txt = await fs.readFile(DELTAS_FILE, "utf-8");
-    JSON.parse(txt || "[]");
-  } catch {
-    await fs.writeFile(DELTAS_FILE, "[]", "utf-8");
-  }
-}
-
-function scenarioFilePath(id) {
-  return path.join(SCENARIOS_DIR, `scenario-${id}.json`);
-}
-
-async function scenarioExists(id) {
-  try {
-    await fs.access(scenarioFilePath(id));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function readScenarioRaw(id) {
-  const txt = await fs.readFile(scenarioFilePath(id), "utf-8");
-  return JSON.parse(txt);
-}
-
-async function writeScenario(id, scenarioObj) {
-  await fs.writeFile(scenarioFilePath(id), JSON.stringify(scenarioObj, null, 2), "utf-8");
-}
-
-async function readAllDeltas() {
-  const txt = await fs.readFile(DELTAS_FILE, "utf-8");
-  return JSON.parse(txt || "[]");
-}
-
-async function appendDelta(deltaObj) {
-  const deltas = await readAllDeltas();
-  deltas.push(deltaObj);
-  await fs.writeFile(DELTAS_FILE, JSON.stringify(deltas, null, 2), "utf-8");
-}
-
 function unixTimestampSeconds() {
   return Math.floor(Date.now() / 1000);
 }
 
-// =====================
-//   ORDER CONTENT BY nextLineId
-// =====================
 function orderLinesByLinks(lines) {
-  if (!Array.isArray(lines) || lines.length === 0) return [];
+  if (!lines.length) return [];
 
   const map = new Map(lines.map(l => [l.lineId, l]));
-  const pointedTo = new Set();
-  for (const l of lines) {
-    if (l.nextLineId != null) pointedTo.add(l.nextLineId);
-  }
+  const pointed = new Set();
+  lines.forEach(l => l.nextLineId != null && pointed.add(l.nextLineId));
 
-  // head = linija na koju niko ne pokazuje (ili fallback lineId=1)
-  let head = lines.find(l => !pointedTo.has(l.lineId)) || map.get(1) || lines[0];
-
+  let head = lines.find(l => !pointed.has(l.lineId)) || lines[0];
   const ordered = [];
   const visited = new Set();
 
   while (head && !visited.has(head.lineId)) {
     visited.add(head.lineId);
     ordered.push(head);
-    head = head.nextLineId == null ? null : map.get(head.nextLineId);
-  }
-
-  // ako ima nepovezanih (ne bi trebalo), dodaj ih na kraj
-  for (const l of lines) {
-    if (!visited.has(l.lineId)) ordered.push(l);
+    head = head.nextLineId != null ? map.get(head.nextLineId) : null;
   }
 
   return ordered;
 }
 
-function getNextLineId(scenario) {
-  const maxId = scenario.content.reduce((m, l) => Math.max(m, l.lineId), 0);
-  return maxId + 1;
-}
-
-// =====================
-//   WORD WRAP (20 words)
-// =====================
-// definicija "riječi" približno: tokeni razdvojeni whitespace-om
-function wrapTextIntoLines(text, maxWordsPerLine = 20) {
-  const words = (text ?? "").trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [""]; // prazno je OK kao linija
-
+function wrapTextIntoLines(text, maxWords = 20) {
+  const words = text.trim().split(/\s+/);
   const result = [];
-  for (let i = 0; i < words.length; i += maxWordsPerLine) {
-    result.push(words.slice(i, i + maxWordsPerLine).join(" "));
+  for (let i = 0; i < words.length; i += maxWords) {
+    result.push(words.slice(i, i + maxWords).join(" "));
   }
   return result;
 }
 
-function expandNewTextArray(newTextArr) {
-  // newText je niz stringova; svaki string se dodatno wrapa na max 20 riječi
-  const out = [];
-  for (const s of newTextArr) {
-    const wrapped = wrapTextIntoLines(String(s), 20);
-    out.push(...wrapped);
-  }
-  return out;
+// =====================
+// LOCKING (GLOBAL, IN-MEMORY)
+// =====================
+const lineLocks = new Map(); // "scenarioId:lineId" -> userId
+const userLocks = new Map(); // userId -> { scenarioId, lineId }
+
+function lineKey(sid, lid) {
+  return `${sid}:${lid}`;
 }
 
 // =====================
-//   LOCKING IN RAM
+// ROUTES – SPIRALA 3
 // =====================
-// Linijski lock je GLOBALAN: user može imati samo 1 zaključanu liniju u svim scenarijima. :contentReference[oaicite:2]{index=2}
-const userToLockedLine = new Map(); // userId -> { scenarioId, lineId }
-const lineLocks = new Map();        // key "scenarioId:lineId" -> userId
 
-function lineKey(scenarioId, lineId) {
-  return `${scenarioId}:${lineId}`;
-}
-
-// Character locks (po scenariju + ime lika)
-const charLocks = new Map(); // key "scenarioId:NAME" -> userId
-function charKey(scenarioId, name) {
-  return `${scenarioId}:${name}`;
-}
-
-// =====================
-//   ROUTE 1: POST /api/scenarios
-// =====================
+// CREATE SCENARIO
 app.post("/api/scenarios", async (req, res) => {
-  try {
-    const title = (req.body && typeof req.body.title === "string" && req.body.title.trim() !== "")
-      ? req.body.title
-      : "Neimenovani scenarij";
+  const title = req.body?.title?.trim() || "Neimenovani scenarij";
 
-    // novi scenarioId = max postojeći + 1
-    const files = await fs.readdir(SCENARIOS_DIR);
-    const ids = files
-      .map(f => (f.match(/^scenario-(\d+)\.json$/) || [])[1])
-      .filter(Boolean)
-      .map(Number);
+  const scenario = await Scenario.create({ title });
 
-    const newId = (ids.length ? Math.max(...ids) : 0) + 1;
+  await Line.create({
+    scenarioId: scenario.id,
+    lineId: 1,
+    text: "",
+    nextLineId: null
+  });
 
-    const scenario = {
-      id: newId,
-      title,
-      content: [
-        { lineId: 1, nextLineId: null, text: "" }
-      ]
-    };
-
-    await writeScenario(newId, scenario);
-
-    return res.status(200).json(scenario);
-  } catch (err) {
-    return res.status(500).json({ message: "Server greska!" });
-  }
+  res.status(200).json({
+    id: scenario.id,
+    title,
+    content: [{ lineId: 1, text: "", nextLineId: null }]
+  });
 });
 
-// =====================
-//   ROUTE: GET /api/scenarios/:scenarioId
-// =====================
+// GET SCENARIO
 app.get("/api/scenarios/:scenarioId", async (req, res) => {
   const scenarioId = Number(req.params.scenarioId);
 
-  if (!(await scenarioExists(scenarioId))) {
+  const scenario = await Scenario.findByPk(scenarioId, { include: Line });
+  if (!scenario)
     return res.status(404).json({ message: "Scenario ne postoji!" });
-  }
 
-  const scenario = await readScenarioRaw(scenarioId);
-  scenario.content = orderLinesByLinks(scenario.content);
-  return res.status(200).json(scenario);
+  const content = orderLinesByLinks(
+    scenario.Lines.map(l => ({
+      lineId: l.lineId,
+      text: l.text,
+      nextLineId: l.nextLineId
+    }))
+  );
+
+  res.status(200).json({
+    id: scenario.id,
+    title: scenario.title,
+    content
+  });
 });
 
-// =====================
-//   ROUTE: POST /api/scenarios/:scenarioId/lines/:lineId/lock
-// =====================
+// LOCK LINE
 app.post("/api/scenarios/:scenarioId/lines/:lineId/lock", async (req, res) => {
   const scenarioId = Number(req.params.scenarioId);
   const lineId = Number(req.params.lineId);
   const userId = req.body?.userId;
 
-  if (!(await scenarioExists(scenarioId))) {
-    return res.status(404).json({ message: "Scenario ne postoji!" });
-  }
-
-  const scenario = await readScenarioRaw(scenarioId);
-  const line = scenario.content.find(l => l.lineId === lineId);
-  if (!line) {
-    return res.status(404).json({ message: "Linija ne postoji!" });
-  }
-
   const key = lineKey(scenarioId, lineId);
-  const lockedBy = lineLocks.get(key);
 
-  // Ako je već zaključana od DRUGOG korisnika -> 409
-  if (lockedBy != null && lockedBy !== userId) {
+  if (lineLocks.has(key) && lineLocks.get(key) !== userId) {
     return res.status(409).json({ message: "Linija je vec zakljucana!" });
   }
 
-  // Ako korisnik ima zaključanu neku drugu liniju -> otključaj je :contentReference[oaicite:3]{index=3}
-  const prev = userToLockedLine.get(userId);
+  // global unlock previous
+  const prev = userLocks.get(userId);
   if (prev) {
-    const prevKey = lineKey(prev.scenarioId, prev.lineId);
-    // otključaj samo ako je taj user stvarno zaključao
-    if (lineLocks.get(prevKey) === userId) {
-      lineLocks.delete(prevKey);
-    }
-    userToLockedLine.delete(userId);
+    lineLocks.delete(lineKey(prev.scenarioId, prev.lineId));
   }
 
-  // Zaključaj ovu
   lineLocks.set(key, userId);
-  userToLockedLine.set(userId, { scenarioId, lineId });
+  userLocks.set(userId, { scenarioId, lineId });
 
-  return res.status(200).json({ message: "Linija je uspjesno zakljucana!" });
+  res.status(200).json({ message: "Linija je uspjesno zakljucana!" });
 });
 
-// =====================
-//   ROUTE: PUT /api/scenarios/:scenarioId/lines/:lineId
-// =====================
+// UPDATE LINE
 app.put("/api/scenarios/:scenarioId/lines/:lineId", async (req, res) => {
   const scenarioId = Number(req.params.scenarioId);
   const lineId = Number(req.params.lineId);
   const userId = req.body?.userId;
   const newText = req.body?.newText;
 
-  if (!(await scenarioExists(scenarioId))) {
-    return res.status(404).json({ message: "Scenario ne postoji!" });
-  }
-
-  const scenario = await readScenarioRaw(scenarioId);
-
-  const idx = scenario.content.findIndex(l => l.lineId === lineId);
-  if (idx === -1) {
-    return res.status(404).json({ message: "Linija ne postoji!" });
-  }
-
-  // newText mora biti niz i NE smije biti prazan :contentReference[oaicite:4]{index=4}
+  // Validacija
   if (!Array.isArray(newText) || newText.length === 0) {
     return res.status(400).json({ message: "Niz new_text ne smije biti prazan!" });
   }
 
   const key = lineKey(scenarioId, lineId);
-  const lockedBy = lineLocks.get(key);
 
-  // ako nije zaključana -> 409 :contentReference[oaicite:5]{index=5}
-  if (lockedBy == null) {
+  if (!lineLocks.has(key)) {
     return res.status(409).json({ message: "Linija nije zakljucana!" });
   }
 
-  // ako je zaključana od drugog -> 409 :contentReference[oaicite:6]{index=6}
-  if (lockedBy !== userId) {
+  if (lineLocks.get(key) !== userId) {
     return res.status(409).json({ message: "Linija je vec zakljucana!" });
   }
 
-  const timestamp = unixTimestampSeconds();
-
-  // 1) proširi newText sa wrap pravilom (20 riječi)
-  const expandedLines = expandNewTextArray(newText);
-
-  // 2) ažuriraj trenutnu liniju
-  const originalNext = scenario.content[idx].nextLineId;
-  scenario.content[idx].text = expandedLines[0];
-
-  // 3) ako ima još linija, ubaci ih POSLIJE trenutne i poveži nextLineId :contentReference[oaicite:7]{index=7}
-  let lastId = lineId;
-  let nextIdToUse = getNextLineId(scenario);
-
-  // Ako ima dodatnih linija
-  for (let i = 1; i < expandedLines.length; i++) {
-    const newLineId = nextIdToUse++;
-    scenario.content.push({
-      lineId: newLineId,
-      nextLineId: null,
-      text: expandedLines[i]
-    });
-
-    // poveži prethodnu liniju na novu
-    const prevLine = scenario.content.find(l => l.lineId === lastId);
-    prevLine.nextLineId = newLineId;
-
-    lastId = newLineId;
-  }
-
-  // zadnja novododana (ili originalna ako nema novih) pokazuje na originalNext
-  const lastLineObj = scenario.content.find(l => l.lineId === lastId);
-  lastLineObj.nextLineId = originalNext ?? null;
-
-  // 4) snimi scenario u fajl
-  await writeScenario(scenarioId, scenario);
-
-  // 5) deltas: zabilježi promjenu(e)
-  // - logujemo originalnu + sve dodane linije
-  // - tip: line_update, timestamp u sekundama :contentReference[oaicite:8]{index=8}
-  // originalna:
-  await appendDelta({
-    scenarioId,
-    type: "line_update",
-    lineId: scenario.content[idx].lineId,
-    nextLineId: scenario.content[idx].nextLineId,
-    content: scenario.content[idx].text,
-    timestamp
+  // Učitaj sve linije scenarija
+  const lines = await Line.findAll({
+    where: { scenarioId },
+    order: [["lineId", "ASC"]]
   });
 
-  // dodane:
-  for (let i = 1; i < expandedLines.length; i++) {
-    const addedLineId = scenario.content
-      .filter(l => l.lineId !== lineId)
-      .map(l => l.lineId)
-      .sort((a, b) => a - b) // nije savršeno, ali dovoljno za delta log
-      .slice(-1)[0];
-    // (ovo je sigurnije uraditi ako čuvaš listu newLineId-eva, ali ostavljam jednostavno)
+  const current = lines.find(l => l.lineId === lineId);
+  if (!current) {
+    return res.status(404).json({ message: "Linija ne postoji!" });
   }
 
-  // 6) otključaj liniju (samo user koji je zaključao smije) :contentReference[oaicite:9]{index=9}
-  lineLocks.delete(key);
-  const prev = userToLockedLine.get(userId);
-  if (prev && prev.scenarioId === scenarioId && prev.lineId === lineId) {
-    userToLockedLine.delete(userId);
+  const originalNext = current.nextLineId;
+
+  //  Prelamanje teksta (20 riječi)
+  const expanded = newText.flatMap(t => wrapTextIntoLines(t, 20));
+
+  // Update postojeće linije
+  current.text = expanded[0];
+  await current.save();
+
+  await Delta.create({
+    scenarioId,
+    type: "line_update",
+    lineId: current.lineId,
+    nextLineId: originalNext,
+    content: current.text,
+    timestamp: unixTimestampSeconds()
+  });
+
+  //  Dodavanje novih linija (BEZ DIRANJA POSTOJEĆIH lineId!)
+  let last = current;
+  let nextId = Math.max(...lines.map(l => l.lineId)) + 1;
+
+  for (let i = 1; i < expanded.length; i++) {
+    const nl = await Line.create({
+      scenarioId,
+      lineId: nextId,
+      text: expanded[i],
+      nextLineId: null
+    });
+
+    last.nextLineId = nl.lineId;
+    await last.save();
+
+    await Delta.create({
+      scenarioId,
+      type: "line_update",
+      lineId: nl.lineId,
+      nextLineId: null,
+      content: nl.text,
+      timestamp: unixTimestampSeconds()
+    });
+
+    last = nl;
+    nextId++;
   }
+
+  //  Zatvori lanac
+  last.nextLineId = originalNext ?? null;
+  await last.save();
+
+  //  Otključavanje
+  lineLocks.delete(key);
+  userLocks.delete(userId);
 
   return res.status(200).json({ message: "Linija je uspjesno azurirana!" });
 });
 
-// =====================
-//   ROUTE: POST /api/scenarios/:scenarioId/characters/lock
-// =====================
-app.post("/api/scenarios/:scenarioId/characters/lock", async (req, res) => {
-  const scenarioId = Number(req.params.scenarioId);
-  const userId = req.body?.userId;
-  const characterName = req.body?.characterName;
 
-  if (!(await scenarioExists(scenarioId))) {
-    return res.status(404).json({ message: "Scenario ne postoji!" });
-  }
-
-  const key = charKey(scenarioId, characterName);
-
-  const lockedBy = charLocks.get(key);
-  if (lockedBy != null && lockedBy !== userId) {
-    return res.status(409).json({ message: "Konflikt! Ime lika je vec zakljucano!" });
-  }
-
-  charLocks.set(key, userId);
-  return res.status(200).json({ message: "Ime lika je uspjesno zakljucano!" });
-});
-
-// =====================
-//   ROUTE: POST /api/scenarios/:scenarioId/characters/update
-// =====================
+// RENAME CHARACTER (CASE-SENSITIVE)
 app.post("/api/scenarios/:scenarioId/characters/update", async (req, res) => {
   const scenarioId = Number(req.params.scenarioId);
-  const userId = req.body?.userId;
-  const oldName = req.body?.oldName;
-  const newName = req.body?.newName;
+  const { userId, oldName, newName } = req.body;
 
-  if (!(await scenarioExists(scenarioId))) {
-    return res.status(404).json({ message: "Scenario ne postoji!" });
+  const lines = await Line.findAll({ where: { scenarioId } });
+
+  for (const l of lines) {
+    l.text = l.text.split(oldName).join(newName); 
+    await l.save();
   }
 
-  const lockK = charKey(scenarioId, oldName);
-  const lockedBy = charLocks.get(lockK);
-
-  // zaštita: samo onaj ko je zaključao smije promijeniti/otključati :contentReference[oaicite:10]{index=10}
-  if (lockedBy != null && lockedBy !== userId) {
-    return res.status(409).json({ message: "Konflikt! Ime lika je zakljucano od drugog korisnika!" });
-  }
-
-  const scenario = await readScenarioRaw(scenarioId);
-
-  // case-sensitive zamjena po cijelom scenariju :contentReference[oaicite:11]{index=11}
-  scenario.content = scenario.content.map(l => ({
-    ...l,
-    text: String(l.text).split(oldName).join(newName)
-  }));
-
-  await writeScenario(scenarioId, scenario);
-
-  const timestamp = unixTimestampSeconds();
-  await appendDelta({
+  await Delta.create({
     scenarioId,
     type: "char_rename",
     oldName,
     newName,
-    timestamp
+    timestamp: unixTimestampSeconds()
   });
 
-  // otključaj staro ime
-  if (charLocks.get(lockK) === userId) {
-    charLocks.delete(lockK);
-  }
-
-  return res.status(200).json({ message: "Ime lika je uspjesno promijenjeno!" });
+  res.status(200).json({ message: "Ime lika je uspjesno promijenjeno!" });
 });
 
-// =====================
-//   ROUTE: GET /api/scenarios/:scenarioId/deltas?since=...
-// =====================
+// GET DELTAS (since)
 app.get("/api/scenarios/:scenarioId/deltas", async (req, res) => {
   const scenarioId = Number(req.params.scenarioId);
   const since = Number(req.query.since ?? 0);
 
-  if (!(await scenarioExists(scenarioId))) {
+  const scenario = await Scenario.findByPk(scenarioId);
+  if (!scenario)
+    return res.status(404).json({ message: "Scenario ne postoji!" });
+
+  const deltas = await Delta.findAll({
+    where: {
+      scenarioId,
+      timestamp: { [Op.gt]: since }
+    },
+    order: [["timestamp", "ASC"]]
+  });
+
+  res.status(200).json({ deltas });
+});
+
+
+// POST /checkpoint
+app.post("/api/scenarios/:scenarioId/checkpoint", async (req, res) => {
+  const scenarioId = Number(req.params.scenarioId);
+
+  const scenario = await Scenario.findByPk(scenarioId);
+  if (!scenario) {
     return res.status(404).json({ message: "Scenario ne postoji!" });
   }
 
-  const deltas = await readAllDeltas();
-  const filtered = deltas
-    .filter(d => d.scenarioId === scenarioId && Number(d.timestamp) > since)
-    .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+  await Checkpoint.create({
+    scenarioId,
+    timestamp: unixTimestampSeconds()
+  });
 
-  return res.status(200).json({ deltas: filtered });
+  return res.status(200).json({
+    message: "Checkpoint je uspjesno kreiran!"
+  });
+});
+
+//GET /checkpoints
+app.get("/api/scenarios/:scenarioId/checkpoints", async (req, res) => {
+  const scenarioId = Number(req.params.scenarioId);
+
+  const scenario = await Scenario.findByPk(scenarioId);
+  if (!scenario) {
+    return res.status(404).json({ message: "Scenario ne postoji!" });
+  }
+
+  const checkpoints = await Checkpoint.findAll({
+    where: { scenarioId },
+    order: [["timestamp", "ASC"]],
+    attributes: ["id", "timestamp"]
+  });
+
+  return res.status(200).json(checkpoints);
+});
+
+// GET /restore/:checkpointId
+
+
+app.get("/api/scenarios/:scenarioId/restore/:checkpointId", async (req, res) => {
+  const scenarioId = Number(req.params.scenarioId);
+  const checkpointId = Number(req.params.checkpointId);
+
+  const scenario = await Scenario.findByPk(scenarioId);
+  if (!scenario) {
+    return res.status(404).json({ message: "Scenario ne postoji!" });
+  }
+
+  const checkpoint = await Checkpoint.findOne({
+    where: { id: checkpointId, scenarioId }
+  });
+
+  if (!checkpoint) {
+    return res.status(404).json({ message: "Checkpoint ne postoji!" });
+  }
+
+  //  početno stanje = stanje odmah nakon POST /api/scenarios
+  let lines = await Line.findAll({
+    where: { scenarioId },
+    order: [["lineId", "ASC"]]
+  });
+
+  let state = lines.map(l => ({
+    lineId: l.lineId,
+    text: l.text,
+    nextLineId: l.nextLineId
+  }));
+
+  //  dohvati sve delte do timestampa checkpointa
+  const deltas = await Delta.findAll({
+    where: {
+      scenarioId,
+      timestamp: { [Op.lte]: checkpoint.timestamp }
+    },
+    order: [["timestamp", "ASC"]]
+  });
+
+  //  primijeni delte redom
+  for (const d of deltas) {
+    if (d.type === "line_update") {
+      const line = state.find(l => l.lineId === d.lineId);
+      if (line) {
+        line.text = d.content;
+        line.nextLineId = d.nextLineId;
+      }
+    }
+
+    if (d.type === "char_rename") {
+      state = state.map(l => ({
+        ...l,
+        text: l.text.split(d.oldName).join(d.newName)
+      }));
+    }
+  }
+
+  //  sortiraj po nextLineId logici (isti helper)
+  const ordered = orderLinesByLinks(state);
+
+  return res.status(200).json({
+    id: scenario.id,
+    title: scenario.title,
+    content: ordered
+  });
 });
 
 // =====================
-//   START
+// START
 // =====================
-ensureDataFolders().then(() => {
-  const PORT = 3000;
-  app.listen(PORT, () => console.log(`Server radi na http://localhost:${PORT}`));
+sequelize.sync({ force: true }).then(async () => {
+  await seedScenarioIfEmpty();
+
+  app.listen(3000, () =>
+    console.log("Server radi na http://localhost:3000")
+  );
 });
+
+
+async function seedScenarioIfEmpty() {
+  const count = await Scenario.count();
+  if (count > 0) return;
+
+  const scenario = await Scenario.create({
+    id: 1,
+    title: "Potraga za izgubljenim ključem"
+  });
+
+  await Line.bulkCreate([
+    {
+      scenarioId: 1,
+      lineId: 1,
+      nextLineId: 2,
+      text: "NARATOR: Sunce je polako zalazilo nad starim gradom."
+    },
+    {
+      scenarioId: 1,
+      lineId: 2,
+      nextLineId: 3,
+      text: "ALICE: Jesi li siguran da je ključ ostao u biblioteci?"
+    },
+    {
+      scenarioId: 1,
+      lineId: 3,
+      nextLineId: 4,
+      text: "BOB: To je posljednje mjesto gdje sam ga vidio prije nego što je pala noć."
+    },
+    {
+      scenarioId: 1,
+      lineId: 4,
+      nextLineId: 5,
+      text: "ALICE: Moramo požuriti prije nego što čuvar zaključa glavna vrata."
+    },
+    {
+      scenarioId: 1,
+      lineId: 5,
+      nextLineId: 6,
+      text: "BOB: Čekaj, čuješ li taj zvuk iza polica?"
+    },
+    {
+      scenarioId: 1,
+      lineId: 6,
+      nextLineId: null,
+      text: "NARATOR: Iz sjene se polako pojavila nepoznata figura."
+    }
+  ]);
+
+  console.log("Seed scenario ubačen ");
+}
+
