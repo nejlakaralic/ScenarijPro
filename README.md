@@ -13,20 +13,20 @@ The project was developed iteratively through multiple phases (*spirals*), gradu
 ---
 
 ## Features
-# Phase 1 – UI (HTML & CSS)
+### Phase 1 – UI (HTML & CSS)
 * Script overview page (projects dashboard)
 * Script editor interface
 * User settings page
 * Responsive design (desktop & mobile)
 
-# Phase 2 – Text Processing (JavaScript)
+### Phase 2 – Text Processing (JavaScript)
 * Custom text editor module
 * Word counting (including formatting detection)
 * Character (role) recognition
 * Detection of inconsistencies in character names
 * Dialogue and scene analysis
 
-# Phase 3 – Backend API (Node.js & Express)
+### Phase 3 – Backend API (Node.js & Express)
 * Create and retrieve scripts
 * Line-level locking mechanism to prevent conflicts
 * Line updates with automatic text wrapping
@@ -34,7 +34,7 @@ The project was developed iteratively through multiple phases (*spirals*), gradu
 * Change tracking using a delta system
 * File-based persistence using JSON
 
-# Phase 4 – Database & Versioning
+### Phase 4 – Database & Versioning
 * Migration from JSON storage to MySQL database
 * Sequelize ORM integration
 * Data models: Scenario, Line, Delta, Checkpoint
